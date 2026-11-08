@@ -28,6 +28,26 @@ Chaque flux est qualifié : **documenté** (annoncé publiquement), **rapporté*
 - Les boutons de scénario isolent une boucle : Nvidia, cloud ou financement bancaire.
 - Contrôles : lecture/pause, vitesse d'animation, affichage des montants.
 
+## Vérifications
+
+Un harnais de tests simule le chargement de la page (desktop et mobile) et vérifie :
+
+- la syntaxe JavaScript ;
+- la cohérence des données (références des flux, scénarios, sources, positions des acteurs) ;
+- le rendu réel dans un DOM simulé : acteurs, flux, étiquettes, particules d'animation,
+  absence d'erreur JS, panneau rempli ;
+- la bascule desktop ↔ mobile et le filtrage par scénario.
+
+En local :
+
+```bash
+npm install
+npm run check
+```
+
+Dans GitHub Actions : le workflow `.github/workflows/checks.yml` exécute ces mêmes
+vérifications à chaque push sur `main` et sur chaque pull request.
+
 ## Déploiement (GitHub Pages)
 
 Le workflow `.github/workflows/pages.yml` publie le site à chaque push sur `main`.
