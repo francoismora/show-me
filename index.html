@@ -138,6 +138,12 @@
   .node text { pointer-events: none; }
   .edge-path { fill: none; pointer-events: stroke; }
   .edge-hit { fill: none; stroke: transparent; stroke-width: 18; pointer-events: stroke; cursor: pointer; }
+  .edge-label {
+    paint-order: stroke;
+    stroke: var(--bg);
+    stroke-width: 6;
+    stroke-linejoin: round;
+  }
   .dimmed { opacity: .12; }
   .hidden-elt { display: none; }
   footer {
@@ -398,6 +404,7 @@ function build() {
       t.setAttribute("text-anchor", "middle");
       t.setAttribute("font-size", "11");
       t.setAttribute("fill", "#c7d2ee");
+      t.setAttribute("class", "edge-label");
       t.textContent = e.amount;
       t.dataset.edgeLabel = e.id;
       gLabels.appendChild(t);
@@ -429,7 +436,7 @@ function build() {
     name.setAttribute("x", p.x + 80);
     name.setAttribute("y", p.y + 30);
     name.setAttribute("text-anchor", "middle");
-    name.setAttribute("font-size", "13.5");
+    name.setAttribute("font-size", isMobile ? "12" : "13.5");
     name.setAttribute("font-weight", "600");
     name.setAttribute("fill", "#fff");
     name.textContent = nd.name;
@@ -437,7 +444,7 @@ function build() {
     sub.setAttribute("x", p.x + 80);
     sub.setAttribute("y", p.y + 48);
     sub.setAttribute("text-anchor", "middle");
-    sub.setAttribute("font-size", "11");
+    sub.setAttribute("font-size", isMobile ? "10" : "11");
     sub.setAttribute("fill", colorOf(nd.type));
     sub.textContent = nd.fictif ? "Fictif — " + TYPES[nd.type].label : TYPES[nd.type].label;
     g.append(name, sub);
