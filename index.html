@@ -223,6 +223,19 @@ const TYPES = {
   banque: { color: "var(--bank)", label: "Banques" },
   investisseur: { color: "var(--investor)", label: "Investisseurs" },
   clients: { color: "var(--customer)", label: "Clients finaux" },
+  banquecentrale: { color: "#00cfd6", label: "Banque centrale" },
+};
+
+const FLOW_TYPES = {
+  participation: { color: "#6ee7a0", label: "Prise de participation" },
+  achat: { color: "#4f8ef7", label: "Achat / contrat" },
+  credit: { color: "#e6b93c", label: "Crédit / prêt" },
+  garantie: { color: "#ff9f43", label: "Garantie" },
+  commission: { color: "#eee6d8", label: "Commissions bancaires" },
+  revenus: { color: "#f26d8a", label: "Revenus clients" },
+  valeur: { color: "#b76ef2", label: "Valeur livrée" },
+  reserves: { color: "#00cfd6", label: "Réserves / refinancement" },
+  depot: { color: "#8fa3c8", label: "Dépôts / trésorerie" },
 };
 
 const NODES = [
@@ -253,8 +266,11 @@ const NODES = [
   { id: "fonds-gulf", name: "Gulf Horizon Fund (fictif)", type: "investisseur", fictif: true,
     x: 120, y: 700, my: 1070,
     desc: "Fonds souverain fictif. Représente les capitaux publics du Golfe qui investissent dans les labos d'IA et les infrastructures, dont les termes exacts restent confidentiels." },
+  { id: "fed", name: "Fed (banque centrale)", type: "banquecentrale", fictif: false,
+    x: 120, y: 430, my: 1010,
+    desc: "La Réserve fédérale américaine, banque centrale réelle de l'écosystème décrit. Elle ne prête pas directement aux entreprises d'IA, mais elle alimente les banques en réserves, fixe le coût de l'argent (taux directeurs) et, en dernier ressort, sauvegarde le système. Toute la chaîne de crédit qui finance les datacenters repose sur cette base monétaire." },
   { id: "clients", name: "Entreprises & abonnés", type: "clients", fictif: false,
-    x: 600, y: 700, my: 1200,
+    x: 600, y: 700, my: 1270,
     desc: "Utilisateurs finaux : abonnés ChatGPT, entreprises, développeurs via API. Ils fournissent les revenus réels qui remontent la chaîne et rendent la boucle économiquement soutenable — ou non." },
 ];
 
@@ -265,60 +281,69 @@ const SOURCES = {
 };
 
 const EDGES = [
-  { id: "e1", from: "openai", to: "nvidia", amount: "10 Mds$", source: "documente",
+  { id: "e1", type: "achat", from: "openai", to: "nvidia", amount: "10 Mds$", source: "documente",
     label: "Achat de puces (engagement)", scenario: "nvidia-loop",
     desc: "Annoncé en septembre 2025 : OpenAI s'engage à acheter 10 milliards de dollars de puces et systèmes Nvidia, en même temps que Nvidia investit dans OpenAI." },
-  { id: "e2", from: "nvidia", to: "openai", amount: "jusqu'à 100 Mds$", source: "documente",
+  { id: "e2", type: "participation", from: "nvidia", to: "openai", amount: "jusqu'à 100 Mds$", source: "documente",
     label: "Investissement capitalistique", scenario: "nvidia-loop",
     desc: "Nvidia annonce un investissement pouvant atteindre 100 milliards de dollars dans OpenAI. L'argent investi revient chez Nvidia sous forme d'achats de puces : la définition même du « circular deal »." },
-  { id: "e3", from: "azure", to: "openai", amount: "> 13 Mds$", source: "documente",
+  { id: "e3", type: "participation", from: "azure", to: "openai", amount: "> 13 Mds$", source: "documente",
     label: "Investissement historique", scenario: "cloud-loop",
     desc: "Microsoft a investi plus de 13 milliards de dollars dans OpenAI (capital + crédits Azure), devenant son premier actionnaire externe et son partenaire cloud exclusif historique." },
-  { id: "e4", from: "openai", to: "azure", amount: "~430 Mds$ (rapporté)", source: "rapporte",
+  { id: "e4", type: "achat", from: "openai", to: "azure", amount: "~430 Mds$ (rapporté)", source: "rapporte",
     label: "Engagement de compute", scenario: "cloud-loop",
     desc: "Selon la presse, OpenAI se serait engagé à dépenser environ 430 milliards de dollars de compute sur Azure sur 10+ ans. L'argent investi par Microsoft revient en grande partie à Microsoft." },
-  { id: "e5", from: "openai", to: "coreweave", amount: "11,9 Mds$", source: "documente",
+  { id: "e5", type: "achat", from: "openai", to: "coreweave", amount: "11,9 Mds$", source: "documente",
     label: "Contrat compute 5 ans", scenario: "cloud-loop",
     desc: "Contrat de 11,9 milliards de dollars signé en 2025 entre OpenAI et CoreWeave pour de la capacité GPU dédiée." },
-  { id: "e6", from: "coreweave", to: "nvidia", amount: "Achats GPU", source: "documente",
+  { id: "e6", type: "achat", from: "coreweave", to: "nvidia", amount: "Achats GPU", source: "documente",
     label: "Achats de GPU", scenario: "nvidia-loop",
     desc: "CoreWeave est l'un des plus gros acheteurs de GPU Nvidia : une partie de l'argent payé par OpenAI à CoreWeave remonte directement à Nvidia." },
-  { id: "e7", from: "nvidia", to: "coreweave", amount: "Participation", source: "documente",
+  { id: "e7", type: "participation", from: "nvidia", to: "coreweave", amount: "Participation", source: "documente",
     label: "Prise de participation", scenario: "nvidia-loop",
     desc: "Nvidia a investi dans CoreWeave avant son introduction en bourse. Nvidia finance son propre client, qui lui achète ses puces." },
-  { id: "e8", from: "openai", to: "oracle", amount: "~300 Mds$ (rapporté)", source: "rapporte",
+  { id: "e8", type: "achat", from: "openai", to: "oracle", amount: "~300 Mds$ (rapporté)", source: "rapporte",
     label: "Contrat cloud 5 ans", scenario: "cloud-loop",
     desc: "Contrat cloud de l'ordre de 300 milliards de dollars sur 5 ans rapporté par la presse en 2025, adossé au programme de datacenters Stargate." },
-  { id: "e9", from: "oracle", to: "nvidia", amount: "Achats GPU", source: "documente",
+  { id: "e9", type: "achat", from: "oracle", to: "nvidia", amount: "Achats GPU", source: "documente",
     label: "Achats de GPU", scenario: "nvidia-loop",
     desc: "Les datacenters d'Oracle s'équipent massivement en GPU Nvidia (et en réseaux d'interconnexion Mellanox/Nvidia)." },
-  { id: "e10", from: "softbank", to: "openai", amount: "40 Mds$", source: "documente",
+  { id: "e10", type: "participation", from: "softbank", to: "openai", amount: "40 Mds$", source: "documente",
     label: "Tour de table 2025", scenario: "financing",
     desc: "SoftBank a mené le tour de table de 40 milliards de dollars d'OpenAI en 2025, valorisant le labo à 300 milliards. SoftBank finance l'acheteur de compute et de puces." },
-  { id: "e11", from: "banque-aurora", to: "oracle", amount: "Prêts projet (fictif)", source: "fictif",
+  { id: "e11", type: "credit", from: "banque-aurora", to: "oracle", amount: "Prêts projet (fictif)", source: "fictif",
     label: "Financement de datacenters", scenario: "financing",
     desc: "Flux fictif illustratif : les banques prêtent aux opérateurs de datacenters, adossant la dette aux contrats long terme signés avec les labos d'IA. La dette finance les achats de GPU, les revenus du labo remboursent la dette." },
-  { id: "e12", from: "banque-aurora", to: "coreweave", amount: "Lignes de crédit (fictif)", source: "fictif",
+  { id: "e12", type: "credit", from: "banque-aurora", to: "coreweave", amount: "Lignes de crédit (fictif)", source: "fictif",
     label: "Crédit acheteur de GPU", scenario: "financing",
     desc: "Flux fictif illustratif : le crédit bancaire permet aux clouds d'acheter les GPU dont l'argent arrive chez Nvidia ; Nvidia place une partie de sa trésorerie… auprès des banques." },
-  { id: "e13", from: "banque-meridian", to: "openai", amount: "Conseil & structuration (fictif)", source: "fictif",
-    label: "Structuration des tours", scenario: "financing",
-    desc: "Flux fictif illustratif : les banques d'affaires conçoivent les montages circulaires (capital contre engagements d'achat) et prélèvent des commissions sur chaque tour." },
-  { id: "e14", from: "fonds-gulf", to: "openai", amount: "Capital patient (fictif)", source: "fictif",
+  { id: "e13", type: "commission", from: "openai", to: "banque-meridian", amount: "Commissions (fictif)", source: "fictif",
+    label: "Commissions de structuration", scenario: "financing",
+    desc: "Flux fictif illustratif : les banques d'affaires conçoivent les montages circulaires (capital contre engagements d'achat) et prélèvent des commissions sur chaque tour — payées par le labo, donc par l'argent même qu'elles aident à faire circuler." },
+  { id: "e14", type: "participation", from: "fonds-gulf", to: "openai", amount: "Capital patient (fictif)", source: "fictif",
     label: "Investissement souverain", scenario: "financing",
     desc: "Flux fictif illustratif : les fonds souverains apportent un capital patient de très long terme, dont les termes réels ne sont pas publics." },
-  { id: "e15", from: "fonds-gulf", to: "banque-aurora", amount: "Dépôts (fictif)", source: "fictif",
+  { id: "e15", type: "depot", from: "fonds-gulf", to: "banque-aurora", amount: "Dépôts (fictif)", source: "fictif",
     label: "Capitaux à prêter", scenario: "financing",
     desc: "Flux fictif illustratif : les capitaux souverains alimentent les bilans bancaires qui, à leur tour, prêtent aux infrastructures IA. La boucle bancaire de l'écosystème." },
-  { id: "e16", from: "clients", to: "openai", amount: "~20 Mds$ ARR (rapporté)", source: "rapporte",
+  { id: "e16", type: "revenus", from: "clients", to: "openai", amount: "~20 Mds$ ARR (rapporté)", source: "rapporte",
     label: "Abonnements & API", scenario: "all",
     desc: "Les abonnés ChatGPT et les entreprises clientes paient OpenAI : c'est le seul flux d'argent entrant qui ne vient pas d'un acteur de la boucle. C'est lui qui valide (ou non) l'ensemble du modèle." },
-  { id: "e17", from: "openai", to: "clients", amount: "Services IA", source: "documente",
+  { id: "e17", type: "valeur", from: "openai", to: "clients", amount: "Services IA", source: "documente",
     label: "Valeur livrée", scenario: "all",
     desc: "En contrepartie, OpenAI livre les services d'IA que les clients paient. Sans ce flux de valeur, la circulation d'argent décrite ailleurs n'est qu'une pyramide d'engagements." },
-  { id: "e18", from: "nvidia", to: "banque-meridian", amount: "Commissions & flux (fictif)", source: "fictif",
-    label: "Trésorerie & marchés", scenario: "financing",
+  { id: "e18", type: "depot", from: "nvidia", to: "banque-meridian", amount: "Trésorerie placée (fictif)", source: "fictif",
+    label: "Dépôts & marchés", scenario: "financing",
     desc: "Flux fictif illustratif : Nvidia place ses bénéfices sur les marchés via les banques, qui financent les datacenters qui achètent des puces Nvidia. La boucle bancaire complète le cercle." },
+  { id: "e19", type: "reserves", from: "fed", to: "banque-aurora", amount: "Refinancement (fictif)", source: "fictif",
+    label: "Refinancement & réserves", scenario: "financing",
+    desc: "Flux fictif illustratif : la Fed prête aux banques (guichet d'escompte, opérations de repo) et fournit les réserves qui servent de base à toute la création de crédit en aval. Le coût de ce refinancement (taux directeur) fixe le prix de toute la chaîne de crédit de l'écosystème IA." },
+  { id: "e20", type: "reserves", from: "fed", to: "banque-meridian", amount: "Refinancement (fictif)", source: "fictif",
+    label: "Refinancement & réserves", scenario: "financing",
+    desc: "Flux fictif illustratif : même mécanisme pour la banque d'affaires — la banque centrale reste le prêteur en dernier ressort de tout le système." },
+  { id: "e21", type: "garantie", from: "nvidia", to: "banque-aurora", amount: "Garanties d'emprunts (fictif)", source: "fictif",
+    label: "Garantie des prêts clients", scenario: "financing",
+    desc: "Flux fictif illustratif d'un mécanisme réel documenté : Nvidia se porte garant d'une partie des emprunts contractés par ses clients (clouds, datacenters) auprès des banques. Nvidia sécurise ainsi ses propres ventes de puces — la garantie permet au client d'emprunter, d'acheter des GPU, et l'argent revient à Nvidia." },
 ];
 
 const SCENARIOS = [
@@ -358,8 +383,7 @@ function colorOf(type) {
 }
 
 function edgeColor(e) {
-  if (e.source === "fictif") return HEX.fictif;
-  return colorOf(nodeById(e.from).type);
+  return (FLOW_TYPES[e.type] || FLOW_TYPES.achat).color;
 }
 
 function nodeById(id) { return NODES.find(n => n.id === id); }
@@ -380,7 +404,7 @@ function build() {
   const NS = "http://www.w3.org/2000/svg";
   particles = [];
   svg.innerHTML = "";
-  svg.setAttribute("viewBox", isMobile ? "0 0 400 1300" : "0 0 1200 760");
+  svg.setAttribute("viewBox", isMobile ? "0 0 400 1400" : "0 0 1200 760");
   const defs = document.createElementNS(NS, "defs");
   defs.innerHTML = Array.from(new Set(EDGES.map(e => e.id))).map(id => {
     const e = EDGES.find(x => x.id === id);
@@ -409,6 +433,7 @@ function build() {
     path.setAttribute("opacity", "0.55");
     path.setAttribute("marker-end", `url(#arrow-${e.id})`);
     if (e.source === "fictif") path.setAttribute("stroke-dasharray", "7 5");
+    path.setAttribute("data-fictif", e.source === "fictif");
     const hit = document.createElementNS(NS, "path");
     hit.setAttribute("d", c.path);
     hit.setAttribute("class", "edge-hit");
@@ -563,6 +588,7 @@ function selectEdge(e) {
     <div class="card">
       <h3>${e.label} ${badge(e)}</h3>
       <p><strong>${nodeById(e.from).name} → ${nodeById(e.to).name}</strong></p>
+      <p><strong>Nature du flux :</strong> <span style="color:${edgeColor(e)}">${FLOW_TYPES[e.type].label}</span></p>
       <p><strong>Montant :</strong> ${e.amount}</p>
       <p>${e.desc}</p>
     </div>
@@ -579,7 +605,7 @@ function introPanel() {
       <h3>Économie circulaire de l'IA</h3>
       <p>Cette visualisation montre comment l'argent tourne en boucle dans l'écosystème de l'IA générative, à partir de l'exemple documenté de <strong>Nvidia</strong>, d'<strong>OpenAI</strong>, des clouds (Microsoft Azure, CoreWeave, Oracle) et de SoftBank.</p>
       <p>Le principe : <strong>Nvidia investit dans OpenAI, qui achète des puces Nvidia</strong>. Microsoft investit dans OpenAI, qui dépense sur Azure, qui achète des GPU Nvidia. Les banques prêtent aux datacenters qui achètent les puces, et Nvidia place sa trésorerie… auprès des banques.</p>
-      <p>Les acteurs en <strong style="color:var(--fictive)">pointillés rouges</strong> sont fictifs : ils représentent les institutions bancaires et financières dont les données réelles ne sont pas publiques.</p>
+      <p><strong>Les couleurs indiquent la nature du flux financier</strong> (participation, achat, crédit, garantie, commissions…), pas le secteur d'origine de l'argent. Les flux en <strong style="color:var(--fictive)">pointillés</strong> sont fictifs : ils illustrent des rôles dont les données réelles ne sont pas publiques. La Fed, elle, est réelle : elle alimente toute la chaîne de crédit en réserves.</p>
     </div>
     <div class="card">
       <h3>Scénarios</h3>
@@ -617,9 +643,9 @@ function initControls() {
     else introPanel();
   });
   const legend = document.getElementById("legend");
-  legend.innerHTML = Object.entries(TYPES).map(([k, v]) =>
+  legend.innerHTML = Object.entries(FLOW_TYPES).map(([k, v]) =>
     `<span class="legend-item"><span class="dot" style="background:${v.color}"></span>${v.label}</span>`
-  ).join("") + `<span class="legend-item"><span class="dot" style="background:var(--fictive)"></span>Entité fictive</span>`;
+  ).join("") + `<span class="legend-item">— pointillés = flux fictif · bordure rouge pointillée = acteur fictif</span>`;
 }
 
 initControls();

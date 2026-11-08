@@ -56,6 +56,12 @@ check("Scénarios utilisés par les flux déclarés", () => {
   return [...new Set(EDGE_SCENARIOS)].join(", ");
 });
 
+check("Chaque flux a une nature (type) déclarée", () => {
+  const types = [...script.matchAll(/type: "([a-z]+)", from:/g)].map(m => m[1]);
+  assert(types.length === EDGE_FROM.length, `natures manquantes : ${EDGE_FROM.length - types.length} flux`);
+  return [...new Set(types)].join(", ");
+});
+
 check("Sources des flux valides (documente/rapporte/fictif)", () => {
   const srcs = [...script.matchAll(/source: "([a-z]+)"/g)].map(m => m[1]);
   const bad = srcs.filter(s => !["documente", "rapporte", "fictif"].includes(s));
@@ -126,7 +132,7 @@ function runDomChecks(width, height, label, expectedViewBox) {
 
 (async () => {
   await runDomChecks(1280, 800, "desktop", "0 0 1200 760");
-  await runDomChecks(390, 844, "mobile", "0 0 400 1300");
+  await runDomChecks(390, 844, "mobile", "0 0 400 1400");
 
   check("Bascule desktop ↔ mobile au redimensionnement", () => {
     return new Promise(resolve => {
@@ -137,9 +143,9 @@ function runDomChecks(width, height, label, expectedViewBox) {
         w.innerWidth = 390;
         w.dispatchEvent(new w.Event("resize"));
         setTimeout(() => {
-          assert(svg.getAttribute("viewBox") === "0 0 400 1300", "viewBox mobile attendu après resize");
+          assert(svg.getAttribute("viewBox") === "0 0 400 1400", "viewBox mobile attendu après resize");
           assert(svg.querySelectorAll(".node").length === NODE_IDS.length, "acteurs manquants après resize");
-          resolve("viewBox 1200x760 → 400x1300, acteurs conservés");
+          resolve("viewBox 1200x760 → 400x1400, acteurs conservés");
         }, 400);
       }, 600);
     });
