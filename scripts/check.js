@@ -28,8 +28,9 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
+execFileSync("npm", ["run", "build"], { cwd: ROOT, stdio: "pipe" });
+
 check("Build du projet (esbuild) produit dist/", () => {
-  execFileSync("npm", ["run", "build"], { cwd: ROOT, stdio: "pipe" });
   for (const f of ["index.html", "bundle.js", "bundle.css"]) {
     assert(fs.existsSync(path.join(ROOT, "dist", f)), `dist/${f} manquant`);
   }
