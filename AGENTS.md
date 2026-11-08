@@ -13,7 +13,10 @@ aucun framework) qui visualise le flux de l'argent dans l'économie circulaire d
 - Les données sont dans les constantes `NODES` (acteurs), `EDGES` (flux),
   `FLOW_TYPES` (natures de flux financiers), `SCENARIOS` (vues filtrées),
   `SOURCES` (qualifications documenté / rapporté / fictif).
-- Chaque acteur possède des coordonnées desktop (`x`, `y`) **et** mobile (`my`).
+- **Aucune position manuelle** : le layout est calculé par Dagre (vendu dans
+  `vendor/dagre.min.js`). Desktop = layout hiérarchique gauche→droite calculé
+  depuis les flux réels ; mobile = colonne guidée par `MOBILE_ORDER` (ordre
+  sémantique de lecture, pas des coordonnées).
 - Chaque flux possède : `id`, `type` (nature financière), `from`, `to`, `amount`,
   `source` (qualification), `label`, `scenario`, `desc`.
 - Les entités bancaires/financières dont les données ne sont pas publiques sont
@@ -29,8 +32,10 @@ aucun framework) qui visualise le flux de l'argent dans l'économie circulaire d
 - Tout nouveau flux doit avoir une qualification `source` honnête :
   `documente` (annoncé publiquement), `rapporte` (presse, non confirmé) ou
   `fictif` (illustratif).
-- Aucune dépendance runtime ; seules les devDependencies du harnais de tests
-  sont autorisées dans `package.json`.
+- Aucune dépendance runtime externe (CDN interdit) ; les bibliothèques runtime
+  doivent être **vendues** dans `vendor/` et chargées par `<script src>`.
+  Seules les devDependencies du harnais de tests sont autorisées dans
+  `package.json`.
 
 ## Vérifications — règle fondamentale
 

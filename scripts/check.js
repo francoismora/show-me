@@ -29,7 +29,7 @@ function assert(cond, msg) {
 
 const html = fs.readFileSync(HTML, "utf8");
 const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
-assert(scriptMatch, "aucun bloc <script> trouvé");
+assert(scriptMatch, "aucun bloc <script> inline trouvé");
 const script = scriptMatch[1];
 
 check("Syntaxe JavaScript valide", () => {
@@ -43,6 +43,19 @@ const EDGE_FROM = [...script.matchAll(/from: "([a-z-]+)"/g)].map(m => m[1]);
 const EDGE_TO = [...script.matchAll(/to: "([a-z-]+)"/g)].map(m => m[1]);
 const EDGE_SCENARIOS = [...script.matchAll(/scenario: "([a-z-]+)"/g)].map(m => m[1]);
 const SCENARIO_IDS = [...script.matchAll(/\{ id: "([a-z-]+)", label:/g)].map(m => m[1]);
+
+check("Bibliothèque de layout vendue présente", () => {
+  const vendor = fs.existsSync(path.join(ROOT, "vendor", "dagre.min.js"));
+  assert(vendor, "vendor/dagre.min.js manquant");
+  assert(html.includes('src="vendor/dagre.min.js"'), "le script vendor n'est pas chargé par index.html");
+  return "vendor/dagre.min.js chargé par la page";
+});
+
+check("Aucune position manuelle résiduelle dans les acteurs", () => {
+  assert(!/\bx: \d+, y: \d+/.test(script), "coordonnées manuelles x/y encore présentes dans NODES");
+  assert(!/\bmy: \d+/.test(script), "coordonnées mobiles manuelles my: encore présentes dans NODES");
+  return "positions 100 % calculées par le layout";
+});
 
 check("Références des flux vers des acteurs existants", () => {
   const bad = [...EDGE_FROM, ...EDGE_TO].filter(id => !NODE_IDS.includes(id));
@@ -70,20 +83,13 @@ check("Sources des flux valides (documente/rapporte/fictif)", () => {
   return `${srcs.length} flux qualifiés`;
 });
 
-check("Chaque acteur a une position desktop et mobile", () => {
-  const nodes = script.split("const NODES =")[1].split("];")[0];
-  const blocks = nodes.match(/\{ id: "[a-z-]+",[\s\S]*?\},/g) || [];
-  assert(blocks.length === NODE_IDS.length, `blocs de nœuds lisibles : ${blocks.length}/${NODE_IDS.length}`);
-  const bad = blocks.filter(b => !/x: \d+, y: \d+, my: \d+/.test(b));
-  assert(bad.length === 0, `${bad.length} nœud(s) sans coordonnées desktop+mobile`);
-  return `${blocks.length} nœuds positionnés (desktop + mobile)`;
-});
-
 function loadPage(width, height) {
   const errors = [];
   const dom = new JSDOM(html, {
+    url: "file://" + HTML.replace(/\\/g, "/"),
     runScripts: "dangerously",
     pretendToBeVisual: true,
+    resources: "usable",
     beforeParse(window) {
       window.innerWidth = width;
       window.innerHeight = height;
@@ -95,25 +101,46 @@ function loadPage(width, height) {
   return { dom, w, errors };
 }
 
-function runDomChecks(width, height, label, expectedViewBox) {
+function runDomChecks(width, height, label, orientation) {
   return new Promise(resolve => {
-    const { dom, w, errors } = loadPage(width, height);
+    const { w, errors } = loadPage(width, height);
     setTimeout(() => {
+      w.innerWidth = width;
+      w.innerHeight = height;
+      w.dispatchEvent(new w.Event("resize"));
+      setTimeout(() => {
       const svg = w.document.getElementById("graph");
       check(`Rendu ${label} sans erreur JS`, () => {
         assert(errors.length === 0, errors.join(" | "));
-        return "0 erreur";
+        assert(w.dagre, "dagre n'est pas chargé");
+        return "0 erreur, dagre chargé";
       });
       check(`Rendu ${label} : structure complète`, () => {
         const nodes = svg.querySelectorAll(".node").length;
         const edges = svg.querySelectorAll(".edge").length;
         const labels = svg.querySelectorAll("[data-edge-label]").length;
-        const viewBox = svg.getAttribute("viewBox");
         assert(nodes === NODE_IDS.length, `acteurs : ${nodes}/${NODE_IDS.length}`);
         assert(edges === EDGE_FROM.length, `flux : ${edges}/${EDGE_FROM.length}`);
         assert(labels === EDGE_FROM.length, `étiquettes de montants : ${labels}/${EDGE_FROM.length}`);
-        assert(viewBox === expectedViewBox, `viewBox "${viewBox}" != "${expectedViewBox}"`);
-        return `${nodes} acteurs, ${edges} flux, viewBox ${viewBox}`;
+        return `${nodes} acteurs, ${edges} flux`;
+      });
+      check(`Rendu ${label} : layout calculé et dans le cadre`, () => {
+        const vb = svg.getAttribute("viewBox").split(" ").map(Number);
+        const [W, H] = [vb[2], vb[3]];
+        assert(W > 0 && H > 0 && !isNaN(W) && !isNaN(H), `viewBox invalide : ${vb.join(" ")}`);
+        if (orientation === "desktop") {
+          assert(W >= 700, `desktop attendu étalé en largeur (LR), viewBox ${W}x${H}`);
+        } else {
+          assert(W <= 500, `mobile attendu en colonne étroite, viewBox ${W}x${H}`);
+          assert(H > W, `mobile attendu plus haut que large, viewBox ${W}x${H}`);
+        }
+        svg.querySelectorAll(".node rect").forEach(r => {
+          const x = +r.getAttribute("x"), y = +r.getAttribute("y");
+          assert(!isNaN(x) && !isNaN(y), "position non calculée (NaN)");
+          assert(x >= 0 && y >= 0, `nœud hors cadre (négatif) : ${x},${y}`);
+          assert(x + 160 <= W + 1 && y + 64 <= H + 1, `nœud hors cadre : ${x},${y} dans ${W}x${H}`);
+        });
+        return `viewBox ${W}x${H}, ${NODE_IDS.length} acteurs positionnés`;
       });
       check(`Rendu ${label} : particules d'animation générées`, () => {
         const circles = svg.querySelectorAll("circle").length;
@@ -126,43 +153,59 @@ function runDomChecks(width, height, label, expectedViewBox) {
         return `${cards} cartes`;
       });
       resolve();
-    }, 600);
+      }, 400);
+    }, 1500);
   });
 }
 
 (async () => {
-  await runDomChecks(1280, 800, "desktop", "0 0 1200 760");
-  await runDomChecks(390, 844, "mobile", "0 0 400 1400");
+  await runDomChecks(1280, 800, "desktop", "desktop");
+  await runDomChecks(390, 844, "mobile", "mobile");
 
   check("Bascule desktop ↔ mobile au redimensionnement", () => {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       const { w } = loadPage(1280, 800);
       setTimeout(() => {
-        const svg = w.document.getElementById("graph");
-        assert(svg.getAttribute("viewBox") === "0 0 1200 760", "viewBox desktop initial incorrect");
-        w.innerWidth = 390;
-        w.dispatchEvent(new w.Event("resize"));
-        setTimeout(() => {
-          assert(svg.getAttribute("viewBox") === "0 0 400 1400", "viewBox mobile attendu après resize");
-          assert(svg.querySelectorAll(".node").length === NODE_IDS.length, "acteurs manquants après resize");
-          resolve("viewBox 1200x760 → 400x1400, acteurs conservés");
-        }, 400);
-      }, 600);
+        try {
+          w.innerWidth = 1280;
+          w.dispatchEvent(new w.Event("resize"));
+          setTimeout(() => {
+            try {
+              const svg = w.document.getElementById("graph");
+              const desktopVb = svg.getAttribute("viewBox").split(" ").map(Number);
+              assert(desktopVb[2] >= 700, `viewBox desktop initial incorrect : ${desktopVb.join(" ")}`);
+              w.innerWidth = 390;
+              w.dispatchEvent(new w.Event("resize"));
+              setTimeout(() => {
+                try {
+                  const vb = svg.getAttribute("viewBox").split(" ").map(Number);
+                  assert(vb[3] > vb[2] && vb[2] <= 500, `viewBox mobile en colonne attendu, reçu ${vb.join(" ")}`);
+                  assert(svg.querySelectorAll(".node").length === NODE_IDS.length, "acteurs manquants après resize");
+                  resolve(`viewBox ${desktopVb[2]}x${desktopVb[3]} → ${vb[2]}x${vb[3]}, acteurs conservés`);
+                } catch (err) { reject(err); }
+              }, 400);
+            } catch (err) { reject(err); }
+          }, 400);
+        } catch (err) { reject(err); }
+      }, 1500);
     });
   });
 
   check("Scénario isole bien les flux", () => {
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
       const { w } = loadPage(1280, 800);
       setTimeout(() => {
-        const btn = [...w.document.querySelectorAll("#scenarios button")].find(b => b.dataset.id === "nvidia-loop");
-        btn.click();
-        const dimmed = w.document.querySelectorAll(".edge.dimmed").length;
-        const visible = w.document.querySelectorAll(".edge:not(.dimmed)").length;
-        assert(visible > 0 && dimmed > 0, `visible=${visible}, atténués=${dimmed}`);
-        assert(visible + dimmed === EDGE_FROM.length, "tous les flux ne sont pas rendus");
-        resolve(`${visible} flux actifs, ${dimmed} atténués`);
-      }, 600);
+        try {
+          const btn = [...w.document.querySelectorAll("#scenarios button")].find(b => b.dataset.id === "nvidia-loop");
+          assert(btn, "bouton de scénario nvidia-loop introuvable");
+          btn.click();
+          const dimmed = w.document.querySelectorAll(".edge.dimmed").length;
+          const visible = w.document.querySelectorAll(".edge:not(.dimmed)").length;
+          assert(visible > 0 && dimmed > 0, `visible=${visible}, atténués=${dimmed}`);
+          assert(visible + dimmed === EDGE_FROM.length, "tous les flux ne sont pas rendus");
+          resolve(`${visible} flux actifs, ${dimmed} atténués`);
+        } catch (err) { reject(err); }
+      }, 1500);
     });
   });
 

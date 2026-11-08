@@ -215,6 +215,7 @@
   </aside>
 </div>
 <footer>Les entités marquées « fictif » sont des personnages créés pour illustruer le rôle des institutions dont les données ne sont pas publiques. Les montants « rapportés » proviennent de la presse économique et ne sont pas officiellement confirmés.</footer>
+<script src="vendor/dagre.min.js"></script>
 <script>
 const TYPES = {
   semiconducteur: { color: "var(--nvidia)", label: "Semi-conducteurs" },
@@ -240,37 +241,26 @@ const FLOW_TYPES = {
 
 const NODES = [
   { id: "nvidia", name: "NVIDIA", type: "semiconducteur", fictif: false,
-    x: 600, y: 120, my: 30,
     desc: "Fournisseur dominant des GPU qui entraînent et font tourner les modèles d'IA. Au cœur de la boucle : il vend des puces aux datacenters, puis réinvestit une partie de ses gains comme capital dans ses propres clients." },
   { id: "openai", name: "OpenAI", type: "ialab", fictif: false,
-    x: 600, y: 430, my: 550,
     desc: "Labo d'IA éditant ChatGPT. Acteur central de la circularité : il achète des puces et du compute, lève des montants records, s'engage à racheter des puces auprès de ses propres investisseurs, et transforme les abonnements en revenus." },
   { id: "azure", name: "Microsoft Azure", type: "cloud", fictif: false,
-    x: 260, y: 290, my: 420,
     desc: "Cloud de Microsoft, premier partenaire compute d'OpenAI et premier investisseur historique. Microsoft finance OpenAI, qui dépense cet argent sur Azure, qui achète des GPU Nvidia." },
   { id: "coreweave", name: "CoreWeave", type: "cloud", fictif: false,
-    x: 940, y: 290, my: 290,
     desc: "Cloud spécialisé GPU, client majeur de Nvidia et fournisseur de compute d'OpenAI. Illustration parfaite de la boucle : Nvidia a investi dans CoreWeave, CoreWeave achète des GPU Nvidia, OpenAI paie CoreWeave, et une partie de cet argent revient chez Nvidia." },
   { id: "oracle", name: "Oracle", type: "cloud", fictif: false,
-    x: 940, y: 580, my: 680,
     desc: "Fournisseur de datacenters massifs (programme Stargate). Signe des contrats cloud géants avec OpenAI et s'équipe en GPU Nvidia, financés en partie par la dette." },
   { id: "softbank", name: "SoftBank", type: "investisseur", fictif: false,
-    x: 260, y: 580, my: 810,
     desc: "Fonds d'investissement japonais, investisseur principal des tours de table records d'OpenAI et co-investisseur du programme Stargate. La circularité passe aussi par lui : il finance l'acheteur des puces." },
   { id: "banque-aurora", name: "Aurora Capital (fictif)", type: "banque", fictif: true,
-    x: 120, y: 150, my: 940,
     desc: "Banque fictive. Représente le rôle des banques de l'ombre dans le financement des datacenters : prêts projet adossés aux contrats long terme signés avec les labos d'IA, et lignes de crédit aux acheteurs de GPU. Ces montants, dans la réalité, ne sont pas publics." },
   { id: "banque-meridian", name: "Meridian Trust (fictif)", type: "banque", fictif: true,
-    x: 1080, y: 120, my: 160,
     desc: "Banque d'affaires fictive. Représente les conseillers financiers qui structurent les tours de table et les « circular deals » (investissement croisé contre engagement d'achat), ainsi que les marchés obligataires qui financent les datacenters." },
   { id: "fonds-gulf", name: "Gulf Horizon Fund (fictif)", type: "investisseur", fictif: true,
-    x: 120, y: 700, my: 1070,
     desc: "Fonds souverain fictif. Représente les capitaux publics du Golfe qui investissent dans les labos d'IA et les infrastructures, dont les termes exacts restent confidentiels." },
   { id: "fed", name: "Fed (banque centrale)", type: "banquecentrale", fictif: false,
-    x: 120, y: 430, my: 1010,
     desc: "La Réserve fédérale américaine, banque centrale réelle de l'écosystème décrit. Elle ne prête pas directement aux entreprises d'IA, mais elle alimente les banques en réserves, fixe le coût de l'argent (taux directeurs) et, en dernier ressort, sauvegarde le système. Toute la chaîne de crédit qui finance les datacenters repose sur cette base monétaire." },
   { id: "clients", name: "Entreprises & abonnés", type: "clients", fictif: false,
-    x: 600, y: 700, my: 1270,
     desc: "Utilisateurs finaux : abonnés ChatGPT, entreprises, développeurs via API. Ils fournissent les revenus réels qui remontent la chaîne et rendent la boucle économiquement soutenable — ou non." },
 ];
 
@@ -346,6 +336,11 @@ const EDGES = [
     desc: "Flux fictif illustratif d'un mécanisme réel documenté : Nvidia se porte garant d'une partie des emprunts contractés par ses clients (clouds, datacenters) auprès des banques. Nvidia sécurise ainsi ses propres ventes de puces — la garantie permet au client d'emprunter, d'acheter des GPU, et l'argent revient à Nvidia." },
 ];
 
+const MOBILE_ORDER = [
+  "fed", "banque-aurora", "banque-meridian", "fonds-gulf", "softbank",
+  "nvidia", "azure", "coreweave", "oracle", "openai", "clients",
+];
+
 const SCENARIOS = [
   { id: "all", label: "Vue d'ensemble" },
   { id: "nvidia-loop", label: "Boucle Nvidia" },
@@ -362,10 +357,37 @@ let activeScenario = "all";
 let particles = [];
 let selectedNode = null;
 let selectedEdge = null;
-let isMobile = window.innerWidth < 700;
+function isMobileScreen() {
+  return window.innerWidth < 700;
+}
+let isMobile = isMobileScreen();
+let layoutPos = {};
+let currentViewBox = "0 0 1200 760";
+
+function computeLayout() {
+  const g = new dagre.graphlib.Graph();
+  if (isMobileScreen()) {
+    g.setGraph({ rankdir: "TB", nodesep: 40, ranksep: 80, marginx: 20, marginy: 20 });
+    NODES.forEach(nd => g.setNode(nd.id, { width: 160, height: 64 }));
+    for (let i = 0; i < MOBILE_ORDER.length - 1; i++) {
+      g.setEdge(MOBILE_ORDER[i], MOBILE_ORDER[i + 1], {});
+    }
+  } else {
+    g.setGraph({ rankdir: "LR", nodesep: 55, ranksep: 120, marginx: 30, marginy: 30 });
+    NODES.forEach(nd => g.setNode(nd.id, { width: 160, height: 64 }));
+    EDGES.forEach(e => g.setEdge(e.from, e.to, {}));
+  }
+  dagre.layout(g);
+  layoutPos = {};
+  NODES.forEach(nd => {
+    const c = g.node(nd.id);
+    layoutPos[nd.id] = { x: c.x - 80, y: c.y - 32 };
+  });
+  currentViewBox = "0 0 " + Math.ceil(g.graph().width) + " " + Math.ceil(g.graph().height);
+}
 
 function getPos(nd) {
-  return isMobile ? { x: 120, y: nd.my } : { x: nd.x, y: nd.y };
+  return layoutPos[nd.id];
 }
 
 const HEX = {
@@ -394,7 +416,7 @@ function edgeCurve(e) {
   const mx = (ax + bx) / 2, my = (ay + by) / 2;
   const dx = bx - ax, dy = by - ay;
   const len = Math.hypot(dx, dy) || 1;
-  const off = Math.min(isMobile ? 30 : 70, len * 0.18);
+  const off = Math.min(isMobileScreen() ? 30 : 70, len * 0.18);
   const nx = -dy / len * off, ny = dx / len * off;
   const cx = mx + nx, cy = my + ny;
   return { ax, ay, bx, by, cx, cy, path: `M ${ax} ${ay} Q ${cx} ${cy} ${bx} ${by}` };
@@ -404,7 +426,8 @@ function build() {
   const NS = "http://www.w3.org/2000/svg";
   particles = [];
   svg.innerHTML = "";
-  svg.setAttribute("viewBox", isMobile ? "0 0 400 1400" : "0 0 1200 760");
+  computeLayout();
+  svg.setAttribute("viewBox", currentViewBox);
   const defs = document.createElementNS(NS, "defs");
   defs.innerHTML = Array.from(new Set(EDGES.map(e => e.id))).map(id => {
     const e = EDGES.find(x => x.id === id);
@@ -648,24 +671,34 @@ function initControls() {
   ).join("") + `<span class="legend-item">— pointillés = flux fictif · bordure rouge pointillée = acteur fictif</span>`;
 }
 
-initControls();
-build();
-introPanel();
-animate();
+let started = false;
+function startApp() {
+  if (started) return;
+  started = true;
+  initControls();
+  build();
+  introPanel();
+  animate();
+  let lastMobile = isMobile;
+  window.addEventListener("resize", () => {
+    const nowMobile = isMobileScreen();
+    if (nowMobile !== lastMobile) {
+      lastMobile = nowMobile;
+      isMobile = nowMobile;
+      build();
+      applyScenario(activeScenario);
+      if (selectedNode) selectNode(selectedNode);
+      else if (selectedEdge) selectEdge(selectedEdge);
+      else introPanel();
+    }
+  });
+}
 
-let lastMobile = isMobile;
-window.addEventListener("resize", () => {
-  const nowMobile = window.innerWidth < 700;
-  if (nowMobile !== lastMobile) {
-    lastMobile = nowMobile;
-    isMobile = nowMobile;
-    build();
-    applyScenario(activeScenario);
-    if (selectedNode) selectNode(selectedNode);
-    else if (selectedEdge) selectEdge(selectedEdge);
-    else introPanel();
-  }
-});
+if (window.dagre) {
+  startApp();
+} else {
+  window.addEventListener("load", startApp);
+}
 </script>
 </body>
 </html>
