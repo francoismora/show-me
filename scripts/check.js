@@ -91,6 +91,15 @@ check("Chaque flux a une nature (type) déclarée", () => {
   return [...new Set(types)].join(", ");
 });
 
+check("Chaque flux encode une intensité (magnitude) et une fréquence (frequency)", () => {
+  const mags = [...script.matchAll(/magnitude: ([\d.]+), frequency: (\d+),/g)].map(m => [parseFloat(m[1]), parseInt(m[2], 10)]);
+  assert(mags.length === EDGE_FROM.length, `encodages manquants : ${mags.length}/${EDGE_FROM.length} flux`);
+  const bad = mags.filter(([m, f]) => !(m >= 0 && m <= 1) || !(Number.isInteger(f) && f >= 1 && f <= 6));
+  assert(bad.length === 0, `valeurs hors bornes : ${JSON.stringify(bad)}`);
+  const totalFreq = mags.reduce((a, [, f]) => a + f, 0);
+  return `${mags.length} flux encodés, ${totalFreq} particules au total`;
+});
+
 check("Sources des flux valides (documente/rapporte/fictif)", () => {
   const srcs = [...script.matchAll(/source: "([a-z]+)"/g)].map(m => m[1]);
   const bad = srcs.filter(s => !["documente", "rapporte", "fictif"].includes(s));
@@ -162,6 +171,13 @@ function runDomChecks(width, height, label, orientation) {
         const circles = svg.querySelectorAll("circle").length;
         assert(circles > 0, "aucune particule");
         return `${circles} particules visibles`;
+      });
+      check(`Rendu ${label} : densité de particules = fréquences des flux`, () => {
+        const circles = svg.querySelectorAll("circle").length;
+        const freqs = [...script.matchAll(/frequency: (\d+),/g)].map(m => parseInt(m[1], 10));
+        const expected = freqs.reduce((a, b) => a + b, 0);
+        assert(circles === expected, `${circles} particules != somme des fréquences (${expected})`);
+        return `${circles} particules = somme des fréquences (${expected})`;
       });
       check(`Rendu ${label} : panneau d'introduction rempli`, () => {
         const cards = w.document.querySelectorAll("#panel .card").length;

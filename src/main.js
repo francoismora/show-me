@@ -191,9 +191,7 @@ function build() {
     .text(d => (d.fictif ? "Fictif — " : "") + TYPES[d.type].label);
 
   EDGES.forEach(e => {
-    const g = edgeGeom(e);
-    const approxLen = Math.hypot(g.t.x - g.s.x, g.t.y - g.s.y);
-    const n = Math.max(1, Math.round(approxLen / 130));
+    const n = e.frequency || 1;
     for (let i = 0; i < n; i++) {
       particles.push({ edge: e, t: i / n });
     }
@@ -210,16 +208,39 @@ function isEdgeActive(e) {
   return activeScenario === "all" || e.scenario === activeScenario || e.scenario === "all";
 }
 
+function pathLength(g) {
+  let len = 0;
+  let prev = pointOn(g, 0);
+  for (let i = 1; i <= 12; i++) {
+    const p = pointOn(g, i / 12);
+    len += Math.hypot(p.x - prev.x, p.y - prev.y);
+    prev = p;
+  }
+  return len;
+}
+
+const BASE_SPEED = 55;
+let lastFrame = null;
+
 function animate() {
   const layer = select(svg).select("#particles-layer");
   const visible = particles.filter(p => isEdgeActive(p.edge));
+  const now = performance.now();
+  const dt = lastFrame === null ? 0 : Math.min((now - lastFrame) / 1000, 0.1);
+  lastFrame = now;
   if (running) {
-    visible.forEach(p => { p.t = (p.t + 0.0016 * speed) % 1; });
+    visible.forEach(p => {
+      const g = edgeGeom(p.edge);
+      const voltage = 0.4 + (p.edge.magnitude || 0.5);
+      const px = BASE_SPEED * voltage * speed * dt;
+      const len = pathLength(g) || 1;
+      p.t = (p.t + px / len) % 1;
+    });
   }
   layer.selectAll("circle")
     .data(visible, (d, i) => i)
     .join("circle")
-      .attr("r", 3.2)
+      .attr("r", d => 2.6 + (d.edge.magnitude || 0.5) * 1.6)
       .attr("cx", d => pointOn(edgeGeom(d.edge), d.t).x)
       .attr("cy", d => pointOn(edgeGeom(d.edge), d.t).y)
       .attr("fill", d => edgeColor(d.edge))
@@ -303,6 +324,7 @@ function introPanel() {
       <p>Cette visualisation montre comment l'argent tourne en boucle dans l'écosystème de l'IA générative, à partir de l'exemple documenté de <strong>Nvidia</strong>, d'<strong>OpenAI</strong>, des clouds (Microsoft Azure, CoreWeave, Oracle) et de SoftBank.</p>
       <p>Le principe : <strong>Nvidia investit dans OpenAI, qui achète des puces Nvidia</strong>. Microsoft investit dans OpenAI, qui dépense sur Azure, qui achète des GPU Nvidia. Les banques prêtent aux datacenters qui achètent les puces, et Nvidia place sa trésorerie… auprès des banques.</p>
       <p><strong>Les couleurs indiquent la nature du flux financier</strong> (participation, achat, crédit, garantie, commissions…), pas le secteur d'origine de l'argent. Les flux en <strong style="color:var(--fictive)">pointillés</strong> sont fictifs : ils illustrent des rôles dont les données réelles ne sont pas publiques. La Fed, elle, est réelle : elle alimente toute la chaîne de crédit en réserves.</p>
+      <p><strong>Lecture de l'animation</strong> : la <strong>vitesse</strong> d'une particule encode l'intensité relative du flux (le « voltage » : un tour de table de 100 Mds$ circule plus vite qu'une ligne de crédit) ; le <strong>nombre</strong> de particules encode la fréquence (l'« intensité » : les abonnements clients circulent en continu, un investissement exceptionnel ne passe qu'une fois).</p>
     </div>
     <div class="card">
       <h3>Scénarios</h3>
