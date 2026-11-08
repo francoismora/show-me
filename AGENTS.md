@@ -70,6 +70,44 @@ Concrètement :
 - Après l'ajout d'un check, vérifier que le workflow **Checks** passe sur `main`
   avant de considérer le travail comme terminé.
 
+## Catalogue des vérifications et refactoring
+
+Chaque check est déclaré avec son **tier** et son **intention** :
+
+- `contrat` : invariant de données ou de lecture (schéma, encodages, promesse
+  éditoriale). Ne doit **jamais** être retiré lors d'un refactoring ; s'il
+  échoue, le refactor a introduit un bug.
+- `comportement` : invariant de la page publiée (démarrage sans erreur,
+  structure rendue = données, bascule mobile). Doit survivre aux refactors
+  d'implémentation ; s'il échoue, décider explicitement.
+- `rendu` : couplé à l'implémentation actuelle (ex. usage de D3). À
+  **réévaluer à chaque refactoring** ; candidat légitime à suppression ou
+  réécriture.
+
+Le catalogue est toujours à jour car généré depuis le code :
+
+```bash
+npm run check:list
+```
+
+**Procédure décisionnelle quand un refactoring casse un check** (jamais
+automatique — un check qui se régénère pour coller au code ne protège plus
+rien) :
+
+1. Lire l'intention du check dans le catalogue.
+2. Si l'intention reste valide → le refactor a un bug : corriger le code.
+3. Si l'intention n'a plus de sens → **supprimer** le check (ne jamais
+  l'affaiblir pour le faire passer).
+4. Si le contrat a changé → mettre à jour le check **et** son intention, et
+  le dire dans le message de commit.
+5. Tout nouveau check doit déclarer un tier et une intention ; le harnais
+  rejette un catalogue incohérent.
+
+Privilégier les invariants dérivés des données (ex. « particules = somme
+des fréquences ») sur les valeurs pinnées (ex. dimensions exactes du
+viewBox) : les invariants survivent aux refactors, les valeurs pinnées
+génèrent des fausses alarmes.
+
 ## CI / CD
 
 - `checks.yml` : harnais de vérifications (Node 22, requis par jsdom/undici) ;
