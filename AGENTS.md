@@ -2,21 +2,29 @@
 
 ## Qu'est-ce que ce projet
 
-Application web **100 % statique** (un seul `index.html`, aucune dépendance de build,
-aucun framework) qui visualise le flux de l'argent dans l'économie circulaire de l'IA
-(Nvidia, OpenAI, clouds, banques). Déployée sur GitHub Pages.
+Application web qui visualise le flux de l'argent dans l'économie circulaire de
+l'IA (Nvidia, OpenAI, clouds, banques). Sources en modules ES dans `src/`,
+bundlées par esbuild vers `dist/`, publié sur GitHub Pages.
 
 ## Architecture
 
-- Tout le code applicatif vit dans `index.html` : styles dans le `<style>`,
-  données du graphe et logique dans le `<script>` unique.
+- `src/data.js` : les données du graphe (acteurs, flux, natures, scénarios).
+- `src/main.js` : l'application (rendu D3, layout dagre, interactions, panneau).
+- `src/styles.css` : les styles, bundlés en `dist/bundle.css`.
+- `index.html` : gabarit HTML qui charge `bundle.js` + `bundle.css` ; copié dans
+  `dist/` par le build.
+- `npm run build` (esbuild) produit `dist/` ; `dist/` n'est jamais commité.
 - Les données sont dans les constantes `NODES` (acteurs), `EDGES` (flux),
   `FLOW_TYPES` (natures de flux financiers), `SCENARIOS` (vues filtrées),
   `SOURCES` (qualifications documenté / rapporté / fictif).
-- **Aucune position manuelle** : le layout est calculé par Dagre (vendu dans
-  `vendor/dagre.min.js`). Desktop = layout hiérarchique gauche→droite calculé
-  depuis les flux réels ; mobile = colonne guidée par `MOBILE_ORDER` (ordre
-  sémantique de lecture, pas des coordonnées).
+- **Aucune position manuelle** : le layout est calculé par dagre (dépendance
+  npm). Desktop = layout hiérarchique gauche→droite calculé depuis les flux
+  réels ; mobile = colonne guidée par `MOBILE_ORDER` (ordre sémantique de
+  lecture, pas des coordonnées).
+- Le rendu utilise les modules D3 : `d3-selection` (data-joins),
+  `d3-shape` (générateurs de liens `linkHorizontal`/`linkVertical`),
+  `d3-zoom` (pan/zoom, `touch-action: pan-y` pour préserver le défilement
+  mobile).
 - Chaque flux possède : `id`, `type` (nature financière), `from`, `to`, `amount`,
   `source` (qualification), `label`, `scenario`, `desc`.
 - Les entités bancaires/financières dont les données ne sont pas publiques sont
@@ -32,10 +40,9 @@ aucun framework) qui visualise le flux de l'argent dans l'économie circulaire d
 - Tout nouveau flux doit avoir une qualification `source` honnête :
   `documente` (annoncé publiquement), `rapporte` (presse, non confirmé) ou
   `fictif` (illustratif).
-- Aucune dépendance runtime externe (CDN interdit) ; les bibliothèques runtime
-  doivent être **vendues** dans `vendor/` et chargées par `<script src>`.
-  Seules les devDependencies du harnais de tests sont autorisées dans
-  `package.json`.
+- Toutes les dépendances (runtime et dev) passent par **npm** (`package.json`,
+  lockfile commité) ; aucun CDN, aucun fichier vendor. Le bundle est généré par
+  esbuild : `npm run build` → `dist/`.
 
 ## Vérifications — règle fondamentale
 
@@ -50,6 +57,8 @@ Concrètement :
   et que cette vérification resterait vraie ou utile au déploiement suivant,
   **promouvez-la en check permanent** dans `scripts/check.js` plutôt que de la
   refaire ponctuellement.
+- Le harnais teste le **build réellement publié** : il lance `npm run build`
+  puis charge `dist/index.html`. Ne testez jamais uniquement les sources.
 - Le harnais s'exécute automatiquement dans GitHub Actions
   (`.github/workflows/checks.yml`) **à chaque push sur `main` et sur chaque pull
   request**, c'est-à-dire à chaque publication de la page
@@ -63,6 +72,8 @@ Concrètement :
 
 ## CI / CD
 
-- `checks.yml` : harnais de vérifications (Node 22, requis par jsdom/undici).
-- `pages.yml` : déploiement GitHub Pages, se déclenche sur push sur `main`.
+- `checks.yml` : harnais de vérifications (Node 22, requis par jsdom/undici) ;
+  il build puis teste `dist/`.
+- `pages.yml` : build puis déploiement de `dist/` sur GitHub Pages, se
+  déclenche sur push sur `main`.
 - Les deux workflows doivent rester verts sur `main`.

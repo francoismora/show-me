@@ -4,9 +4,17 @@
   "private": true,
   "description": "Visualisation interactive du flux de l'argent dans l'économie circulaire de l'IA",
   "scripts": {
+    "build": "esbuild src/main.js --bundle --minify --format=iife --outfile=dist/bundle.js && esbuild src/styles.css --minify --outfile=dist/bundle.css && cp index.html dist/index.html",
     "check": "node scripts/check.js"
   },
+  "dependencies": {
+    "d3-selection": "^3.0.0",
+    "d3-shape": "^3.2.0",
+    "d3-zoom": "^3.0.0",
+    "dagre": "^0.8.5"
+  },
   "devDependencies": {
+    "esbuild": "^0.28.2",
     "jsdom": "^31.0.0"
   }
 }

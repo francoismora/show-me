@@ -45,6 +45,9 @@ npm install
 npm run check
 ```
 
+Le harnais lance le build (`npm run build`, esbuild → `dist/`) puis charge et
+teste la page réellement publiée (`dist/index.html`).
+
 Dans GitHub Actions : le workflow `.github/workflows/checks.yml` exécute ces mêmes
 vérifications à chaque push sur `main` et sur chaque pull request.
 

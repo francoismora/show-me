@@ -4,7 +4,8 @@ const { execFileSync } = require("child_process");
 const { JSDOM } = require("jsdom");
 
 const ROOT = path.join(__dirname, "..");
-const HTML = path.join(ROOT, "index.html");
+const HTML = path.join(ROOT, "dist", "index.html");
+const DATA = path.join(ROOT, "src", "data.js");
 let failures = 0;
 let pending = 0;
 
@@ -27,16 +28,16 @@ function assert(cond, msg) {
   if (!cond) throw new Error(msg);
 }
 
-const html = fs.readFileSync(HTML, "utf8");
-const scriptMatch = html.match(/<script>([\s\S]*?)<\/script>/);
-assert(scriptMatch, "aucun bloc <script> inline trouvé");
-const script = scriptMatch[1];
-
-check("Syntaxe JavaScript valide", () => {
-  fs.writeFileSync("/tmp/app-check.js", script);
-  execFileSync(process.execPath, ["--check", "/tmp/app-check.js"], { stdio: "pipe" });
-  return "node --check OK";
+check("Build du projet (esbuild) produit dist/", () => {
+  execFileSync("npm", ["run", "build"], { cwd: ROOT, stdio: "pipe" });
+  for (const f of ["index.html", "bundle.js", "bundle.css"]) {
+    assert(fs.existsSync(path.join(ROOT, "dist", f)), `dist/${f} manquant`);
+  }
+  return "dist/index.html, bundle.js, bundle.css générés";
 });
+
+const html = fs.readFileSync(HTML, "utf8");
+const script = fs.readFileSync(DATA, "utf8");
 
 const NODE_IDS = [...script.matchAll(/\{ id: "([a-z-]+)", name:/g)].map(m => m[1]);
 const EDGE_FROM = [...script.matchAll(/from: "([a-z-]+)"/g)].map(m => m[1]);
@@ -44,17 +45,31 @@ const EDGE_TO = [...script.matchAll(/to: "([a-z-]+)"/g)].map(m => m[1]);
 const EDGE_SCENARIOS = [...script.matchAll(/scenario: "([a-z-]+)"/g)].map(m => m[1]);
 const SCENARIO_IDS = [...script.matchAll(/\{ id: "([a-z-]+)", label:/g)].map(m => m[1]);
 
-check("Bibliothèque de layout vendue présente", () => {
-  const vendor = fs.existsSync(path.join(ROOT, "vendor", "dagre.min.js"));
-  assert(vendor, "vendor/dagre.min.js manquant");
-  assert(html.includes('src="vendor/dagre.min.js"'), "le script vendor n'est pas chargé par index.html");
-  return "vendor/dagre.min.js chargé par la page";
+check("Bibliothèques (d3, dagre) résolues par npm et intégrées au bundle", () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(ROOT, "package.json"), "utf8"));
+  for (const dep of ["d3-selection", "d3-shape", "d3-zoom", "dagre"]) {
+    assert(pkg.dependencies && pkg.dependencies[dep], `dépendance ${dep} absente de package.json`);
+  }
+  const bundle = fs.readFileSync(path.join(ROOT, "dist", "bundle.js"), "utf8");
+  assert(bundle.includes("graphlib") || bundle.includes("dagre"), "dagre absent du bundle");
+  assert(html.includes('src="bundle.js"'), "bundle.js n'est pas chargé par dist/index.html");
+  return "d3 + dagre bundlés";
 });
 
 check("Aucune position manuelle résiduelle dans les acteurs", () => {
   assert(!/\bx: \d+, y: \d+/.test(script), "coordonnées manuelles x/y encore présentes dans NODES");
   assert(!/\bmy: \d+/.test(script), "coordonnées mobiles manuelles my: encore présentes dans NODES");
   return "positions 100 % calculées par le layout";
+});
+
+check("Module D3 utilisé pour le rendu (sélection, formes, zoom)", () => {
+  const main = fs.readFileSync(path.join(ROOT, "src", "main.js"), "utf8");
+  for (const mod of ["d3-selection", "d3-shape", "d3-zoom"]) {
+    assert(main.includes('"' + mod + '"'), `import ${mod} absent de src/main.js`);
+  }
+  assert(main.includes("linkHorizontal") && main.includes("linkVertical"), "générateurs de liens d3-shape inutilisés");
+  assert(main.includes("zoom("), "comportement de zoom non attaché");
+  return "d3-selection, d3-shape (liens), d3-zoom actifs";
 });
 
 check("Références des flux vers des acteurs existants", () => {
@@ -112,8 +127,8 @@ function runDomChecks(width, height, label, orientation) {
       const svg = w.document.getElementById("graph");
       check(`Rendu ${label} sans erreur JS`, () => {
         assert(errors.length === 0, errors.join(" | "));
-        assert(w.dagre, "dagre n'est pas chargé");
-        return "0 erreur, dagre chargé";
+        assert(w.document.querySelectorAll(".node").length > 0, "l'application n'a pas démarré");
+        return "0 erreur, application démarrée";
       });
       check(`Rendu ${label} : structure complète`, () => {
         const nodes = svg.querySelectorAll(".node").length;
