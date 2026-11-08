@@ -9,7 +9,7 @@ bundlées par esbuild vers `dist/`, publié sur GitHub Pages.
 ## Architecture
 
 - `src/data.js` : les données du graphe (acteurs, flux, natures, scénarios).
-- `src/main.js` : l'application (rendu D3, layout dagre, interactions, panneau).
+- `src/main.js` : l'application (rendu D3, layout dagre, interactions, HUD contextuel).
 - `src/styles.css` : les styles, bundlés en `dist/bundle.css`.
 - `index.html` : gabarit HTML qui charge `bundle.js` + `bundle.css` ; copié dans
   `dist/` par le build.
@@ -34,6 +34,10 @@ bundlées par esbuild vers `dist/`, publié sur GitHub Pages.
 ## Règles de contribution
 
 - Interface en français.
+- Interface type jeu : l'animation occupe 100 % de l'écran ; l'information est
+  contextuelle (HUD flottant à la sélection, fermable au ✕ ou au clic sur le
+  fond) ; la légende est à la demande via le bouton « Légende ». Pas de zone
+  d'information permanente.
 - Les couleurs des flux codent la **nature financière** (participation, achat,
   crédit, garantie, commissions, revenus, valeur, réserves, dépôts), jamais le
   secteur d'origine de l'argent.

@@ -272,14 +272,34 @@ function registerDomChecks(width, height, label, orientation) {
     }
   );
   check(
-    "Rendu " + label + " : panneau d'introduction rempli",
+    "Rendu " + label + " : HUD d'introduction affiché au démarrage",
     "comportement",
-    "Au démarrage, le panneau latéral explique la lecture du graphe (couleurs, voltage/fréquence, fictif).",
+    "Au démarrage, le HUD contextuel (plein écran, interface type jeu) explique la lecture du graphe sans zone latérale permanente.",
     async () => {
       const { w } = await pageReady(width, height);
-      const cards = w.document.querySelectorAll("#panel .card").length;
-      assert(cards >= 3, cards + " carte(s) dans le panneau");
-      return cards + " cartes";
+      const hud = w.document.getElementById("hud");
+      assert(!hud.classList.contains("hidden"), "HUD d'intro masqué au démarrage");
+      const cards = hud.querySelectorAll(".card").length;
+      assert(cards >= 1, cards + " carte(s) dans le HUD");
+      assert(hud.querySelector(".hud-close"), "bouton de fermeture absent");
+      return cards + " carte(s), fermeture présente";
+    }
+  );
+  check(
+    "Rendu " + label + " : HUD contextuel réagit à la sélection",
+    "comportement",
+    "Cliquer un acteur remplace le HUD par son détail ; cliquer le fond masque le HUD (info contextuelle uniquement, à la manière d'une interface de jeu).",
+    async () => {
+      const { w } = await pageReady(width, height);
+      const hud = w.document.getElementById("hud");
+      const node = w.document.querySelector(".node");
+      node.dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+      assert(!hud.classList.contains("hidden"), "HUD masqué après clic sur un acteur");
+      const name = node.querySelector("text").textContent;
+      assert(hud.textContent.includes(name), "le HUD ne montre pas le détail de l'acteur cliqué (" + name + ")");
+      w.document.getElementById("graph").dispatchEvent(new w.MouseEvent("click", { bubbles: false }));
+      assert(hud.classList.contains("hidden"), "HUD non masqué après clic sur le fond");
+      return "clic acteur → détail, clic fond → masqué";
     }
   );
 }

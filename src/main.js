@@ -6,7 +6,7 @@ import "./styles.css";
 import { TYPES, FLOW_TYPES, NODES, SOURCES, EDGES, MOBILE_ORDER, SCENARIOS } from "./data.js";
 
 const svg = document.getElementById("graph");
-const panel = document.getElementById("panel");
+const hud = document.getElementById("hud");
 let running = true;
 let speed = 1;
 let showLabels = true;
@@ -263,6 +263,20 @@ function applyScenario(id) {
   });
 }
 
+function showHud(html) {
+  hud.innerHTML = '<button class="hud-close" title="Fermer">✕</button>' + html;
+  hud.classList.remove("hidden");
+  hud.querySelector(".hud-close").addEventListener("click", () => {
+    hud.classList.add("hidden");
+    selectedNode = null;
+    selectedEdge = null;
+  });
+}
+
+function hideHud() {
+  hud.classList.add("hidden");
+}
+
 function badge(e) {
   const s = SOURCES[e.source];
   return '<span class="badge ' + s.cls + '">' + s.txt + '</span>';
@@ -273,11 +287,11 @@ function selectNode(nd) {
   selectedEdge = null;
   const flowsIn = EDGES.filter(e => e.to === nd.id);
   const flowsOut = EDGES.filter(e => e.from === nd.id);
-  const flowItem = e =>
+  const flowItem = (e, dir) =>
     '<div class="flow-item" data-edge="' + e.id + '"><span class="lbl">' +
-    nodeById(e.from === nd.id ? e.to : e.from).name + " · " + e.label +
+    nodeById(dir).name + " · " + e.label +
     '</span><span class="amt">' + e.amount + "</span></div>";
-  panel.innerHTML = `
+  showHud(`
     <div class="card">
       <h3>${nd.name} <span class="badge ${nd.fictif ? "badge-fictif" : "badge-public"}">${nd.fictif ? "Fictif" : "Réel"}</span></h3>
       <p>${nd.desc}</p>
@@ -285,16 +299,16 @@ function selectNode(nd) {
     <div class="card">
       <h3>Flux entrants (argent reçu)</h3>
       <div class="flow-list">
-        ${flowsIn.map(e => '<div class="flow-item" data-edge="' + e.id + '"><span class="lbl">' + nodeById(e.from).name + " · " + e.label + '</span><span class="amt">' + e.amount + "</span></div>").join("") || "<p>Aucun</p>"}
+        ${flowsIn.map(e => flowItem(e, e.from)).join("") || "<p>Aucun</p>"}
       </div>
     </div>
     <div class="card">
       <h3>Flux sortants (argent versé)</h3>
       <div class="flow-list">
-        ${flowsOut.map(e => '<div class="flow-item" data-edge="' + e.id + '"><span class="lbl">' + nodeById(e.to).name + " · " + e.label + '</span><span class="amt">' + e.amount + "</span></div>").join("") || "<p>Aucun</p>"}
+        ${flowsOut.map(e => flowItem(e, e.to)).join("") || "<p>Aucun</p>"}
       </div>
-    </div>`;
-  panel.querySelectorAll(".flow-item").forEach(el => {
+    </div>`);
+  hud.querySelectorAll(".flow-item").forEach(el => {
     el.addEventListener("click", () => selectEdge(EDGES.find(x => x.id === el.dataset.edge)));
   });
 }
@@ -302,7 +316,7 @@ function selectNode(nd) {
 function selectEdge(e) {
   selectedEdge = e;
   selectedNode = null;
-  panel.innerHTML = `
+  showHud(`
     <div class="card">
       <h3>${e.label} ${badge(e)}</h3>
       <p><strong>${nodeById(e.from).name} → ${nodeById(e.to).name}</strong></p>
@@ -314,26 +328,18 @@ function selectEdge(e) {
       <h3>Comment lire la boucle ?</h3>
       <p>${nodeById(e.from).name} verse de l'argent à ${nodeById(e.to).name}. Suivez ensuite les autres flux depuis ${nodeById(e.to).name} : une partie de cet argent a de bonnes chances de revenir, directement ou indirectement, à ${nodeById(e.from).name}.</p>
       <p>C'est cette réinjection continue qui caractérise le modèle d'économie circulaire de l'IA : chaque acteur est à la fois client, fournisseur et investisseur des autres.</p>
-    </div>`;
+    </div>`);
 }
 
 function introPanel() {
-  panel.innerHTML = `
+  showHud(`
     <div class="card">
       <h3>Économie circulaire de l'IA</h3>
       <p>Cette visualisation montre comment l'argent tourne en boucle dans l'écosystème de l'IA générative, à partir de l'exemple documenté de <strong>Nvidia</strong>, d'<strong>OpenAI</strong>, des clouds (Microsoft Azure, CoreWeave, Oracle) et de SoftBank.</p>
       <p>Le principe : <strong>Nvidia investit dans OpenAI, qui achète des puces Nvidia</strong>. Microsoft investit dans OpenAI, qui dépense sur Azure, qui achète des GPU Nvidia. Les banques prêtent aux datacenters qui achètent les puces, et Nvidia place sa trésorerie… auprès des banques.</p>
-      <p><strong>Les couleurs indiquent la nature du flux financier</strong> (participation, achat, crédit, garantie, commissions…), pas le secteur d'origine de l'argent. Les flux en <strong style="color:var(--fictive)">pointillés</strong> sont fictifs : ils illustrent des rôles dont les données réelles ne sont pas publiques. La Fed, elle, est réelle : elle alimente toute la chaîne de crédit en réserves.</p>
-      <p><strong>Lecture de l'animation</strong> : la <strong>vitesse</strong> d'une particule encode l'intensité relative du flux (le « voltage » : un tour de table de 100 Mds$ circule plus vite qu'une ligne de crédit) ; le <strong>nombre</strong> de particules encode la fréquence (l'« intensité » : les abonnements clients circulent en continu, un investissement exceptionnel ne passe qu'une fois).</p>
-    </div>
-    <div class="card">
-      <h3>Scénarios</h3>
-      <p>Utilisez les boutons en haut pour isoler une boucle : <strong>Nvidia</strong> (investissement contre engagement d'achat), <strong>cloud</strong> (capital → compute → GPU), ou <strong>financement bancaire</strong> (dette et structuration).</p>
-    </div>
-    <div class="card">
-      <h3>La question clé</h3>
-      <p>Un seul flux ne boucle pas : les <strong style="color:var(--customer)">clients finaux</strong>. Si leurs paiements ne couvrent pas assez vite les engagements, la boucle fonctionne à crédit — et dépend des banques pour tenir.</p>
-    </div>`;
+      <p><strong>Cliquez sur un acteur ou un flux</strong> pour voir son détail ici. <strong>Les couleurs</strong> indiquent la nature du flux (participation, achat, crédit, garantie…), pas le secteur d'origine. Les flux en <strong style="color:var(--fictive)">pointillés</strong> sont fictifs. La <strong>Légende</strong> (en haut) détaille tout.</p>
+      <p><strong>Lecture de l'animation</strong> : la <strong>vitesse</strong> d'une particule encode l'intensité relative du flux (le « voltage ») ; le <strong>nombre</strong> de particules encode la fréquence (les abonnements circulent en continu, un investissement exceptionnel ne passe qu'une fois).</p>
+    </div>`);
 }
 
 function initControls() {
@@ -363,10 +369,17 @@ function initControls() {
     else if (selectedEdge) selectEdge(selectedEdge);
     else introPanel();
   });
-  const legend = document.getElementById("legend");
-  legend.innerHTML = Object.entries(FLOW_TYPES).map(([k, v]) =>
+  const legendHud = document.getElementById("legend-hud");
+  legendHud.innerHTML = Object.entries(FLOW_TYPES).map(([k, v]) =>
     '<span class="legend-item"><span class="dot" style="background:' + v.color + '"></span>' + v.label + "</span>"
   ).join("") + '<span class="legend-item">— pointillés = flux fictif · bordure rouge pointillée = acteur fictif</span>';
+  document.getElementById("toggle-legend").addEventListener("click", e => {
+    legendHud.classList.toggle("hidden");
+    e.target.classList.toggle("active");
+  });
+  select(svg).on("click", event => {
+    if (event.target.tagName === "svg" || event.target.id === "graph-root") hideHud();
+  });
 }
 
 let started = false;

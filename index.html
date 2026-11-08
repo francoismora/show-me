@@ -19,19 +19,16 @@
       <option value="4">Vitesse ×4</option>
     </select>
     <button id="toggle-labels" class="active">Montants</button>
+    <button id="toggle-legend">Légende</button>
   </div>
 </header>
 <div class="main">
   <div id="graph-wrap">
     <div class="scroll-hint">Faites défiler pour suivre la boucle ↓</div>
-    <div class="hint">Cliquez sur un acteur ou un flux pour voir le détail, la nature du flux et sa source (documenté / rapporté / <b style="color:var(--fictive)">fictif</b>).</div>
-    <div class="legend" id="legend"></div>
     <svg id="graph" viewBox="0 0 1200 760"></svg>
+    <div id="hud" class="hud hidden"></div>
+    <div id="legend-hud" class="legend-hud hidden"></div>
   </div>
-  <aside>
-    <h2>Détails</h2>
-    <div id="panel"></div>
-  </aside>
 </div>
 <footer>Les entités marquées « fictif » sont des personnages créés pour illustruer le rôle des institutions dont les données ne sont pas publiques. Les montants « rapportés » proviennent de la presse économique et ne sont pas officiellement confirmés.</footer>
 <script src="bundle.js"></script>
